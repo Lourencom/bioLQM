@@ -1,94 +1,77 @@
 package org.colomoto.biolqm.io.modrev;
 
-import org.colomoto.biolqm.ConnectivityMatrix;
 import org.colomoto.biolqm.LogicalModel;
-import org.colomoto.biolqm.ModelLayout;
 import org.colomoto.biolqm.NodeInfo;
+import org.colomoto.biolqm.helper.implicants.Formula;
+import org.colomoto.biolqm.helper.implicants.MDD2PrimeImplicants;
+import org.colomoto.biolqm.helper.implicants.RestrictedPathSearcher;
+import org.colomoto.biolqm.helper.state.PatternStateIterator;
 import org.colomoto.biolqm.io.BaseExporter;
-import org.colomoto.biolqm.io.sbml.SBMLQualBundle;
-import org.colomoto.biolqm.metadata.annotations.URI;
-import org.colomoto.biolqm.metadata.constants.Qualifier;
 import org.colomoto.mddlib.MDDManager;
-import org.colomoto.mddlib.MDDVariable;
-import org.colomoto.mddlib.PathSearcher;
-import org.colomoto.biolqm.metadata.Pair;
-import org.colomoto.biolqm.metadata.Annotator;
 
-import org.colomoto.mddlib.VariableEffect;
-import org.sbml.jsbml.*;
-import org.sbml.jsbml.ASTNode.Type;
-import org.sbml.jsbml.ext.layout.*;
-import org.sbml.jsbml.ext.qual.*;
-import org.sbml.jsbml.xml.XMLNode;
-import scala.xml.Null;
-
-import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 import java.io.Writer;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.util.*;
+import java.util.List;
 
-
+/**
+ * Exports a logical model into the Model Revision format.
+ * 
+ * @author Pedro T. Monteiro
+ */
 public class ModRevExport extends BaseExporter {
-    // To export, need to create a file with all edges, then boolean functions,
-    // like so:
-    // vertex(ci1).
-    // edge(ci1, ciact_b2, 1).
-    // edge(ciact_b1, ciact_b2, 1).
-    // ...
-    // functionOr(slp, 1).
-    // functionAnd(en, 1, pka_b2).
-    // functionOr(fz, 1..2).
 
-    public ModRevExport(LogicalModel model) {
-        super(model);
-    }
+	List<NodeInfo> components;
 
-    @Override
-    public void export() throws IOException {
-        final List<NodeInfo> nodes = model.getComponents();
+	public ModRevExport(LogicalModel model) {
+		super(model);
+	}
 
-        Writer writer = streams.writer();
+	@Override
+	public void export() throws IOException {
+		MDDManager ddmanager = model.getMDDManager();
+		this.components = model.getComponents();
+		MDD2PrimeImplicants primer = new MDD2PrimeImplicants(ddmanager);
 
-        MDDManager ddmanager = model.getMDDManager();
+		Writer writer = streams.writer();
 
-        ConnectivityMatrix matrix = new ConnectivityMatrix(model);
+		for (NodeInfo i: components) {
+			writer.write("vertex(" + i.getNodeID() +").\n");
+		}
 
 
-        writer.write("ModRev exporter\n");
-        for (NodeInfo i: nodes) {
-            writer.write("vertex(" + i.getNodeID() +").\n");
-        }
+		int[] functions = model.getLogicalFunctions();
+		for (int idx = 0; idx < functions.length; idx++) {
 
-        // Get the edges between the nodes and write
-        // edge(v1, v2, 1(0)) for each edge depending on if interaction is positive or negative
-        // get regulators
-        for (int i = 0; i < nodes.size(); i++) {
-            int[] regulators = matrix.getRegulators(i, false);
-            VariableEffect[][] effects = matrix.getRegulatorEffects(i, false);
-            for (int j = 0; j < regulators.length; j++) {
-                int regulator = regulators[j];
-                VariableEffect[] effect = effects[j];
-                if (effect[0] == VariableEffect.POSITIVE) {
-                    writer.write("edge(" + nodes.get(regulator).getNodeID() + ", " + nodes.get(i).getNodeID() + ", 1).\n");
-                } else if (effect[0] == VariableEffect.NEGATIVE) {
-                    writer.write("edge(" + nodes.get(regulator).getNodeID() + ", " + nodes.get(i).getNodeID() + ", 0).\n");
-                } else {
-                    writer.write("edge(" + nodes.get(regulator).getNodeID() + ", " + nodes.get(i).getNodeID() + ", 1).\n");
-                    writer.write("edge(" + nodes.get(i).getNodeID() + ", " + nodes.get(regulator).getNodeID() + ", 1).\n");
-                }
-            }
-        }
-        // Get the functions
-        // The predicate functionOr(V,1..N) indicates that the regulatory function of V is a disjunction of N terms.
-        // The predicate functionAnd(V,T,R) is then used to represent that node R is a regulator
-        // of V and is present in the term T of the regulatory function.
-        int[] functions = model.getLogicalFunctions();
+			String node_id = components.get(idx).getNodeID();
+			int node_function = functions[idx];
 
+			Formula formula = primer.getPrimes(node_function, 1);
+			writer.write("functionOr(" + node_id + ", 1" + (formula.toArray().length > 1 ? ".." + formula.toArray().length : "") + ").\n");
 
-        writer.close();
-    }
+			int term_number = 1;
+			for (int[] term : formula.toArray()) {
+				for (int i = 0; i < term.length; i++) {
+					int var_value = term[i];
+					if (var_value < 0) {
+						continue;
+					}
+
+					String regulator_T = components.get(formula.regulators[i]).getNodeID();
+					writer.write("functionAnd(" + node_id + ", " + term_number + ", " + regulator_T + ").\n");
+
+					int interaction;
+					if (var_value == 0) {
+						interaction = 0;
+					} else {
+						interaction = 1;
+					}
+
+					writer.write("edge(" + regulator_T + ", " + node_id + "," + interaction + ").\n");
+				}
+				term_number++;
+			}
+		}
+
+		writer.close();
+	}
 }
-
-
