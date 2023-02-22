@@ -42,33 +42,37 @@ public class ModRevExport extends BaseExporter {
 		int[] functions = model.getLogicalFunctions();
 		for (int idx = 0; idx < functions.length; idx++) {
 
+			NodeInfo node = components.get(idx);
 			String node_id = components.get(idx).getNodeID();
+			int max = node.getMax();
 			int node_function = functions[idx];
+			
+			for (int f = 1; f < max; f++) {
+				Formula formula = primer.getPrimes(node_function, f);
+				writer.write("functionOr(" + node_id + ", 1" + (formula.toArray().length > 1 ? ".." + formula.toArray().length : "") + ").\n");
 
-			Formula formula = primer.getPrimes(node_function, 1);
-			writer.write("functionOr(" + node_id + ", 1" + (formula.toArray().length > 1 ? ".." + formula.toArray().length : "") + ").\n");
+				int term_number = 1;
+				for (int[] term : formula.toArray()) {
+					for (int i = 0; i < term.length; i++) {
+						int var_value = term[i];
+						if (var_value < 0) {
+							continue;
+						}
 
-			int term_number = 1;
-			for (int[] term : formula.toArray()) {
-				for (int i = 0; i < term.length; i++) {
-					int var_value = term[i];
-					if (var_value < 0) {
-						continue;
+						String regulator_T = components.get(formula.regulators[i]).getNodeID();
+						writer.write("functionAnd(" + node_id + ", " + term_number + ", " + regulator_T + ").\n");
+
+						int interaction;
+						if (var_value == 0) {
+							interaction = 0;
+						} else {
+							interaction = 1;
+						}
+
+						writer.write("edge(" + regulator_T + ", " + node_id + "," + interaction + ").\n");
 					}
-
-					String regulator_T = components.get(formula.regulators[i]).getNodeID();
-					writer.write("functionAnd(" + node_id + ", " + term_number + ", " + regulator_T + ").\n");
-
-					int interaction;
-					if (var_value == 0) {
-						interaction = 0;
-					} else {
-						interaction = 1;
-					}
-
-					writer.write("edge(" + regulator_T + ", " + node_id + "," + interaction + ").\n");
+					term_number++;
 				}
-				term_number++;
 			}
 		}
 
