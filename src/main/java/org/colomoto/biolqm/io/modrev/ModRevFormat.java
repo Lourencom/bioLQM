@@ -14,8 +14,10 @@ import org.kohsuke.MetaInfServices;
 @MetaInfServices(LogicalModelFormat.class)
 public class ModRevFormat extends AbstractFormat {
 
+	public static final String file_extension = "lp";
+
 	public ModRevFormat() {
-		super("modrev", "Model Revision format", MultivaluedSupport.BOOLEAN_STRICT);
+		super(file_extension, "Model Revision format", MultivaluedSupport.BOOLEAN_STRICT);
 	}
 
 //	@Override
