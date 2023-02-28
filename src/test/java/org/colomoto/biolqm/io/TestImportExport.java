@@ -146,7 +146,7 @@ public class TestImportExport {
 	@Test
 	public void testModRevExport() {
 		LogicalModel model = getSimpleModel();
-		exportModRev(model, "testExport.modrev");
+		exportModRev(model, "testExport.lp");
 	}
 	public void exportModRev(LogicalModel model, String filename) {
 		ModRevExport exporter = new ModRevExport(model);

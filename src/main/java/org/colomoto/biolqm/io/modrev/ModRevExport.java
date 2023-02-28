@@ -47,7 +47,7 @@ public class ModRevExport extends BaseExporter {
 			int max = node.getMax();
 			int node_function = functions[idx];
 			
-			for (int f = 1; f < max; f++) {
+			for (int f = 1; f <= max; f++) {
 				Formula formula = primer.getPrimes(node_function, f);
 				writer.write("functionOr(" + node_id + ", 1" + (formula.toArray().length > 1 ? ".." + formula.toArray().length : "") + ").\n");
 
@@ -69,7 +69,7 @@ public class ModRevExport extends BaseExporter {
 							interaction = 1;
 						}
 
-						writer.write("edge(" + regulator_T + ", " + node_id + "," + interaction + ").\n");
+						writer.write("edge(" + regulator_T + ", " + node_id + ", " + interaction + ").\n");
 					}
 					term_number++;
 				}
