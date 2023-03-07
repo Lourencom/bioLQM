@@ -46,6 +46,10 @@ public class ModRevExport extends BaseExporter {
 			String node_id = components.get(idx).getNodeID();
 			int max = node.getMax();
 			int node_function = functions[idx];
+			if (node.isInput()) {
+				writer.write("fixed(" + node_id + ").");
+				continue;
+			}
 			
 			for (int f = 1; f <= max; f++) {
 				Formula formula = primer.getPrimes(node_function, f);
