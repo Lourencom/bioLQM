@@ -7,6 +7,7 @@ import org.colomoto.biolqm.NodeInfo;
 import org.colomoto.biolqm.ReferenceModels;
 import org.colomoto.biolqm.io.functions.BooleanFunctionFormat;
 import org.colomoto.biolqm.io.ginml.LogicalModel2GINML;
+import org.colomoto.biolqm.io.modrev.ModRevExport;
 import org.colomoto.biolqm.io.pint.PintExport;
 import org.colomoto.biolqm.io.sbml.SBMLqualExport;
 import org.colomoto.biolqm.io.sbml.SBMLqualImport;
@@ -141,4 +142,19 @@ public class TestImportExport {
 		}
 	}
 
+
+	@Test
+	public void testModRevExport() {
+		LogicalModel model = getSimpleModel();
+		exportModRev(model, "testExport.lp");
+	}
+	public void exportModRev(LogicalModel model, String filename) {
+		ModRevExport exporter = new ModRevExport(model);
+		exporter.setDestination(TestHelper.getTestOutput(filename));
+		try {
+			exporter.export();
+		} catch (IOException e) {
+			fail(e.getMessage());
+		}
+	}
 }
