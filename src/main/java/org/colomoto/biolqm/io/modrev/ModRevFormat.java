@@ -20,10 +20,10 @@ public class ModRevFormat extends AbstractFormat {
 		super(file_extension, "Model Revision format", MultivaluedSupport.BOOLEAN_STRICT);
 	}
 
-//	@Override
-//	public ModRevImport getLoader() {
-//		return new ModRevImport();
-//	}
+	@Override
+	public ModRevImport getLoader() {
+		return new ModRevImport();
+	}
 
 	@Override
 	public ModRevExport getExporter(LogicalModel model) {
