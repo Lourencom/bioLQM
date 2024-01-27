@@ -13,6 +13,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.colomoto.biolqm.LogicalModel;
 import org.colomoto.biolqm.NodeInfo;
+import org.w3c.dom.Node;
 import scala.util.parsing.combinator.testing.Str;
 
 import java.io.IOException;
@@ -39,37 +40,95 @@ public class ModRevImport extends BaseLoader {
             return null;
         }
 
-        // collect all variables
+
         List<NodeInfo> variables = new ArrayList<>();
         Map<String, NodeInfo> id2var = new HashMap<String, NodeInfo>();
 
-        for (TerminalNode node : mctx.getTokens(ModRevParser.ID)) {
-            String variable = node.getText();
-            if (id2var.containsKey(variable)) {
-                continue;
+        // get all nodes to create operand factory
+        for (int i = 0; i < mctx.children.size(); i++) {
+            ParseTree child = mctx.children.get(i);
+            child = child.getChild(0);
+
+            if (child instanceof ModRevParser.VertexContext) {
+                String vertex = child.getChild(1).getText();
+                if (id2var.containsKey(vertex)) {
+                    continue;
+                }
+
+                NodeInfo ni = new NodeInfo(vertex);
+
+                id2var.put(vertex, ni);
+                variables.add(ni);
             }
-
-            NodeInfo ni = new NodeInfo(variable);
-
-            id2var.put(variable, ni);
-            variables.add(ni);
         }
 
-        // create operand factory to assist parser
-        OperandFactory operandFactory = new SimpleOperandFactory<>(variables);
-        ModRevParserListener listener = new ModRevParserListener(operandFactory);
+        // create operand factory
+        OperandFactory operandFactory = new SimpleOperandFactory<NodeInfo>(variables);
 
-        // TODO: load actual functions
-        // the following code might be incorrect
-        Map<NodeInfo, FunctionNode> var2function = new HashMap<NodeInfo, FunctionNode>();
-
-        // walk the parse tree with the listener
+        // walk the entire tree to parse useful stuff
+        ModRevParserListener listener = new ModRevParserListener();
         ParseTreeWalker.DEFAULT.walk(listener, mctx);
 
-        // Extract boolean functions from the listener and load into var2function
+        // get stuff
+        List<Edge> edges = listener.getEdges();
+        List<FunctionOR> functionORs = listener.getFunctionORs();
+        List<FunctionAnd> functionAnds = listener.getFunctionAnds();
+
+        Map<NodeInfo, FunctionNode> var2function = new HashMap<NodeInfo, FunctionNode>();
+
+
+        // TODO: construct FunctionNode for each node
         for (NodeInfo ni : variables) {
-            FunctionNode fn = listener.stack.done(); // Extracting the function from the listener's stack
-            var2function.put(ni, fn);
+            // based on the arrays of FunctionORs and functionAnds, construct FunctionNode
+            ExpressionStack stack = new ExpressionStack(operandFactory);
+            stack.clear();
+
+            for (FunctionOR functionOR : functionORs) {
+
+                if (functionOR.getFirst().equals(ni.getNodeID())) {
+                    String range = functionOR.getRange();
+                    String[] rangeArray = range.split("\\.\\.");
+                    int start = Integer.parseInt(rangeArray[0]);
+                    int end = start;
+                    if (rangeArray.length > 1) {
+                        end = Integer.parseInt(rangeArray[1]);
+                    }
+
+
+                    // create all And terms and OR them together
+                    for (int term = start; term <= end; term++) {
+                        int num_nodes = 0;
+                        for (FunctionAnd functionAnd : functionAnds) {
+
+                            if (functionAnd.getFirst().equals(ni.getNodeID()) &&
+                                    functionAnd.getTerm().equals(Integer.toString(term))) {
+
+                                String target = functionAnd.getSecond();
+                                stack.ident(target);
+                                num_nodes++;
+                            }
+                        }
+
+                        if (num_nodes > 1) {
+                            stack.operator(Operator.AND);
+                        }
+
+                    }
+
+                    if (end > start) {
+                        stack.operator(Operator.OR);
+                    }
+
+                    try {
+                        FunctionNode fn = stack.done();
+                        var2function.put(ni, fn);
+                        break;
+                    } catch (Exception e) {
+                        // stack was empty
+                        // no AND functions specified
+                    }
+                }
+            }
         }
 
         return ExpressionStack.constructModel(operandFactory, variables, var2function);
@@ -89,30 +148,117 @@ public class ModRevImport extends BaseLoader {
 }
 
 
-class ModRevParserListener extends ModRevBaseListener {
+class Edge {
+    private String source;
+    private String target;
+    private String intval;
 
-    private final ParseTreeWalker walker = new ParseTreeWalker();
-    final ExpressionStack stack;
-    private final List<String> variables = new ArrayList<>();
-    public ModRevParserListener(OperandFactory operandFactory) {
-        this.stack = new ExpressionStack(operandFactory);
+    public Edge(String source, String target, String intval) {
+        this.source = source;
+        this.target = target;
+        this.intval = intval;
     }
 
-    public List<String> getVariables() {
-        return variables; // Return the collected variables
+    public String getSource() {
+        return source;
+    }
+
+    public String getTarget() {
+        return target;
+    }
+
+    public String getIntval() {
+        return intval;
+    }
+}
+
+
+class FunctionOR {
+    private String first;
+    private String range;
+
+    public FunctionOR(String first, String range) {
+        this.first = first;
+        this.range = range;
+    }
+
+    public String getFirst() {
+        return first;
+    }
+
+    public String getRange() {
+        return range;
+    }
+}
+
+class FunctionAnd {
+    private String first;
+    private String second;
+    private String value;
+
+    public FunctionAnd(String first, String second, String value) {
+        this.first = first;
+        this.second = second;
+        this.value = value;
+    }
+
+    public String getFirst() {
+        return first;
+    }
+
+    public String getSecond() {
+        return second;
+    }
+
+    public String getTerm() {
+        return value;
+    }
+}
+
+class ModRevParserListener extends ModRevBaseListener {
+    private final ParseTreeWalker walker = new ParseTreeWalker();
+    private List<NodeInfo> vertices = new ArrayList<>();
+    private List<Edge> edges = new ArrayList<>();
+    private List<FunctionOR> functionORs = new ArrayList<>();
+    private List<FunctionAnd> functionAnds = new ArrayList<>();
+
+    public ModRevParserListener() {
+        super();
+        // TODO: Might be able to use
+        // this.stack = new ExpressionStack(operandFactory);
+        // this.operandFactory = operandFactory;
+    }
+
+    public List<NodeInfo> getVariables() {
+        return vertices; // Return the collected variables
+    }
+
+    public List<Edge> getEdges() {
+        return edges;
+    }
+
+    public List<FunctionOR> getFunctionORs() {
+        return functionORs;
+    }
+
+    public List<FunctionAnd> getFunctionAnds() {
+        return functionAnds;
     }
 
     @Override
     public void exitVertex(@NotNull ModRevParser.VertexContext ctx) {
-        String vertexID = ctx.ID().getText();
-        variables.add(vertexID);
+        String vertexID = ctx.children.get(1).getText();
         NodeInfo ni = new NodeInfo(vertexID);
+        vertices.add(ni);
     }
 
     public void exitEdge(@NotNull ModRevParser.EdgeContext ctx) {
         String source = ctx.ID(0).getText();
         String target = ctx.ID(1).getText();
         String intval = ctx.INT().getText();
+
+        Edge edge = new Edge(source, target, intval);
+        edges.add(edge);
 
     }
 
@@ -122,7 +268,8 @@ class ModRevParserListener extends ModRevBaseListener {
         String second = ctx.ID(1).getText();
         String value = ctx.INT().getText();
 
-        stack.operator(Operator.AND);
+        FunctionAnd functionAnd = new FunctionAnd(first, second, value);
+        functionAnds.add(functionAnd);
     }
 
     @Override
@@ -130,6 +277,7 @@ class ModRevParserListener extends ModRevBaseListener {
         String first = ctx.ID().getText();
         String range = ctx.range().getText();
 
-        stack.operator(Operator.OR);
+        FunctionOR function = new FunctionOR(first, range);
+        functionORs.add(function);
     }
 }
