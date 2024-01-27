@@ -1,20 +1,21 @@
-// Define a grammar called ModRev
 grammar ModRev;
 
-// Parser rules
-model: statement* EOF;
+// Define the starting rule
+model: (statement)+ EOF;
 
-statement: vertex | edge | functionOr | functionAnd;
+// A statement can be one of the four types
+statement: vertex | functionOr | functionAnd | edge;
 
-vertex: 'vertex(' ID ').\n';
-edge: 'edge(' ID ',' ID ',' INT ').\n';
-functionOr: 'functionOr(' ID ', 1' range ').\n';
-functionAnd: 'functionAnd(' ID ',' INT ',' ID ').\n';
+// Define the structure of each statement
+vertex: 'vertex(' ID ').' ;
+functionOr: 'functionOr(' ID ',' range ').' ;
+functionAnd: 'functionAnd(' ID ',' INT ',' ID ').' ;
+edge: 'edge(' ID ',' ID ',' INT ').' ;
 
-range: ('..' INT)?;
+// Define 'range' to handle single integers or ranges (e.g., 1..2)
+range: INT ('..' INT)? ;
 
 // Lexer rules
-ID: [a-zA-Z_] [a-zA-Z_0-9]*;
-INT: [0-9]+;
-WS: [ \t\n\r]+ -> skip;
-
+ID: [A-Z]+ ; // Assuming IDs are one or more uppercase letters
+INT: [0-9]+ ; // Integer numbers
+WS: [ \t\r\n]+ -> skip ; // Skip whitespaces, tabs, newlines
