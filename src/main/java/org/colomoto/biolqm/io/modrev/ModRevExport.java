@@ -26,16 +26,33 @@ public class ModRevExport extends BaseExporter {
 		super(model);
 	}
 
+
+	public String formatNodeToValidString(String node_id) {
+		for (char c : node_id.toCharArray()) {
+			if (Character.isUpperCase(c)) {
+				// If there's atleast an uppercase letter,
+				// return the node_id enclosed in quotation marks
+				return "'" + node_id + "'";
+			}
+		}
+		return node_id;
+	}
+
 	@Override
 	public void export() throws IOException {
 		MDDManager ddmanager = model.getMDDManager();
 		this.components = model.getComponents();
 		MDD2PrimeImplicants primer = new MDD2PrimeImplicants(ddmanager);
 
-		Writer writer = streams.writer();
+
+		StringBuilder vertex_lines = new StringBuilder();
+		StringBuilder edge_lines = new StringBuilder();
+		StringBuilder function_lines = new StringBuilder();
 
 		for (NodeInfo i: components) {
-			writer.write("vertex(" + i.getNodeID() +").\n");
+			vertex_lines.append("vertex(")
+					.append(formatNodeToValidString(i.getNodeID()))
+					.append(").\n");
 		}
 
 
@@ -43,17 +60,22 @@ public class ModRevExport extends BaseExporter {
 		for (int idx = 0; idx < functions.length; idx++) {
 
 			NodeInfo node = components.get(idx);
-			String node_id = components.get(idx).getNodeID();
+			String node_id = formatNodeToValidString(components.get(idx).getNodeID());
 			int max = node.getMax();
 			int node_function = functions[idx];
 			if (node.isInput()) {
-				writer.write("fixed(" + node_id + ").");
+				vertex_lines.append("fixed(")
+						.append(node_id)
+						.append(").\n");
 				continue;
 			}
 			
 			for (int f = 1; f <= max; f++) {
 				Formula formula = primer.getPrimes(node_function, f);
-				writer.write("functionOr(" + node_id + ", 1" + (formula.toArray().length > 1 ? ".." + formula.toArray().length : "") + ").\n");
+				function_lines.append("functionOr(")
+						.append(node_id)
+						.append(", 1").append(formula.toArray().length > 1 ? ".." + formula.toArray().length : "")
+						.append(").\n");
 
 				int term_number = 1;
 				for (int[] term : formula.toArray()) {
@@ -63,8 +85,12 @@ public class ModRevExport extends BaseExporter {
 							continue;
 						}
 
-						String regulator_T = components.get(formula.regulators[i]).getNodeID();
-						writer.write("functionAnd(" + node_id + ", " + term_number + ", " + regulator_T + ").\n");
+						String regulator_T = formatNodeToValidString(components.get(formula.regulators[i]).getNodeID());
+						function_lines.append("functionAnd(")
+								.append(node_id).append(", ")
+								.append(term_number).append(", ")
+								.append(regulator_T)
+								.append(").\n");
 
 						int interaction;
 						if (var_value == 0) {
@@ -73,12 +99,22 @@ public class ModRevExport extends BaseExporter {
 							interaction = 1;
 						}
 
-						writer.write("edge(" + regulator_T + ", " + node_id + ", " + interaction + ").\n");
+						edge_lines.append("edge(")
+								.append(regulator_T).append(", ")
+								.append(node_id).append(", ")
+								.append(interaction)
+								.append(").\n");
 					}
 					term_number++;
 				}
 			}
 		}
+
+		Writer writer = streams.writer();
+
+		writer.write(vertex_lines.toString());
+		writer.write(edge_lines.toString());
+		writer.write(function_lines.toString());
 
 		writer.close();
 	}

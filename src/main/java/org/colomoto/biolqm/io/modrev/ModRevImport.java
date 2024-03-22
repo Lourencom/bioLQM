@@ -22,6 +22,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.colomoto.biolqm.io.modrev.ModRevImport.removeQuotationMarks;
+
 public class ModRevImport extends BaseLoader {
 
     public LogicalModel performTask() throws IOException {
@@ -50,7 +52,7 @@ public class ModRevImport extends BaseLoader {
             child = child.getChild(0);
 
             if (child instanceof ModRevParser.VertexContext) {
-                String vertex = child.getChild(1).getText();
+                String vertex = removeQuotationMarks(child.getChild(1).getText());
                 if (id2var.containsKey(vertex)) {
                     continue;
                 }
@@ -145,6 +147,17 @@ public class ModRevImport extends BaseLoader {
         return parser;
     }
 
+    public static String removeQuotationMarks(String node_id) {
+        if (node_id != null && !node_id.isEmpty()) {
+            node_id = node_id.trim(); // Trim whitespace
+            if (node_id.startsWith("'") && node_id.endsWith("'") && node_id.length() > 1) {
+                return node_id.substring(1, node_id.length() - 1);
+            }
+        }
+        return node_id;
+    }
+
+
 }
 
 
@@ -230,7 +243,7 @@ class ModRevParserListener extends ModRevBaseListener {
     }
 
     public List<NodeInfo> getVariables() {
-        return vertices; // Return the collected variables
+        return vertices;
     }
 
     public List<Edge> getEdges() {
@@ -247,14 +260,14 @@ class ModRevParserListener extends ModRevBaseListener {
 
     @Override
     public void exitVertex(@NotNull ModRevParser.VertexContext ctx) {
-        String vertexID = ctx.children.get(1).getText();
+        String vertexID = removeQuotationMarks(ctx.children.get(1).getText());
         NodeInfo ni = new NodeInfo(vertexID);
         vertices.add(ni);
     }
 
     public void exitEdge(@NotNull ModRevParser.EdgeContext ctx) {
-        String source = ctx.ID(0).getText();
-        String target = ctx.ID(1).getText();
+        String source = removeQuotationMarks(ctx.ID(0).getText());
+        String target = removeQuotationMarks(ctx.ID(1).getText());
         String intval = ctx.INT().getText();
 
         Edge edge = new Edge(source, target, intval);
@@ -264,8 +277,8 @@ class ModRevParserListener extends ModRevBaseListener {
 
     @Override
     public void exitFunctionAnd(@NotNull ModRevParser.FunctionAndContext ctx) {
-        String first = ctx.ID(0).getText();
-        String second = ctx.ID(1).getText();
+        String first = removeQuotationMarks(ctx.ID(0).getText());
+        String second = removeQuotationMarks(ctx.ID(1).getText());
         String value = ctx.INT().getText();
 
         FunctionAnd functionAnd = new FunctionAnd(first, second, value);
@@ -274,7 +287,7 @@ class ModRevParserListener extends ModRevBaseListener {
 
     @Override
     public void exitFunctionOr(@NotNull ModRevParser.FunctionOrContext ctx) {
-        String first = ctx.ID().getText();
+        String first = removeQuotationMarks(ctx.ID().getText());
         String range = ctx.range().getText();
 
         FunctionOR function = new FunctionOR(first, range);
