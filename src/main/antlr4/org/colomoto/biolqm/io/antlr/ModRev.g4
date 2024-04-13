@@ -16,6 +16,6 @@ edge: 'edge(' ID ',' ID ',' INT ').' ;
 range: INT ('..' INT)? ;
 
 // Lexer rules
-ID: '\''? [a-zA-Z]+ '\''?;
 INT: [0-9]+ ; // Integer numbers
+ID: '\''? [a-z0-9A-Z]+ '\''?;
 WS: [ \t\r\n]+ -> skip ; // Skip whitespaces, tabs, newlines

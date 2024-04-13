@@ -74,7 +74,7 @@ public class ModRevExport extends BaseExporter {
 				Formula formula = primer.getPrimes(node_function, f);
 				function_lines.append("functionOr(")
 						.append(node_id)
-						.append(", 1").append(formula.toArray().length > 1 ? ".." + formula.toArray().length : "")
+						.append(",1").append(formula.toArray().length > 1 ? ".." + formula.toArray().length : "")
 						.append(").\n");
 
 				int term_number = 1;
@@ -87,8 +87,8 @@ public class ModRevExport extends BaseExporter {
 
 						String regulator_T = formatNodeToValidString(components.get(formula.regulators[i]).getNodeID());
 						function_lines.append("functionAnd(")
-								.append(node_id).append(", ")
-								.append(term_number).append(", ")
+								.append(node_id).append(",")
+								.append(term_number).append(",")
 								.append(regulator_T)
 								.append(").\n");
 
@@ -100,8 +100,8 @@ public class ModRevExport extends BaseExporter {
 						}
 
 						edge_lines.append("edge(")
-								.append(regulator_T).append(", ")
-								.append(node_id).append(", ")
+								.append(regulator_T).append(",")
+								.append(node_id).append(",")
 								.append(interaction)
 								.append(").\n");
 					}
