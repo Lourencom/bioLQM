@@ -4,13 +4,14 @@ grammar ModRev;
 model: (statement)+ EOF;
 
 // A statement can be one of the four types
-statement: vertex | functionOr | functionAnd | edge;
+statement: vertex | functionOr | functionAnd | edge | fixed;
 
 // Define the structure of each statement
 vertex: 'vertex(' ID ').' ;
 functionOr: 'functionOr(' ID ',' range ').' ;
 functionAnd: 'functionAnd(' ID ',' INT ',' ID ').' ;
 edge: 'edge(' ID ',' ID ',' INT ').' ;
+fixed: 'fixed(' ID ').' ;
 
 // Define 'range' to handle single integers or ranges (e.g., 1..2)
 range: INT ('..' INT)? ;

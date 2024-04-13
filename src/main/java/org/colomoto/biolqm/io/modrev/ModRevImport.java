@@ -293,4 +293,7 @@ class ModRevParserListener extends ModRevBaseListener {
         FunctionOR function = new FunctionOR(first, range);
         functionORs.add(function);
     }
+
+    @Override
+    public void exitFixed(@NotNull ModRevParser.FixedContext ctx) {}
 }
