@@ -108,17 +108,22 @@ public class ModRevImport extends BaseLoader {
                                 String target = functionAnd.getSecond();
                                 stack.ident(target);
                                 num_nodes++;
+
+                                if (num_nodes > 1) {
+                                    stack.operator(Operator.AND);
+                                }
                             }
                         }
 
-                        if (num_nodes > 1) {
-                            stack.operator(Operator.AND);
-                        }
 
                     }
 
                     if (end > start) {
-                        stack.operator(Operator.OR);
+                        // end is supposed to reflect stack.size
+                        while (end > 1) {
+                            stack.operator(Operator.OR);
+                            end--;
+                        }
                     }
 
                     try {
