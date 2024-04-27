@@ -106,9 +106,21 @@ public class ModRevImport extends BaseLoader {
                                     functionAnd.getTerm().equals(Integer.toString(term))) {
 
                                 String target = functionAnd.getSecond();
-                                stack.ident(target);
-                                num_nodes++;
 
+                                int interaction = -1;
+                                // from edges, print the edge(target, ni)
+                                for (Edge edge : edges) {
+                                    if (edge.getTarget().equals(ni.getNodeID()) && edge.getSource().equals(target)) {
+                                        interaction = Integer.parseInt(edge.getIntval());
+                                        break;
+                                    }
+                                }
+
+                                stack.ident(target);
+                                if (interaction == 0) {
+                                    stack.not();
+                                }
+                                num_nodes++;
                                 if (num_nodes > 1) {
                                     stack.operator(Operator.AND);
                                 }
