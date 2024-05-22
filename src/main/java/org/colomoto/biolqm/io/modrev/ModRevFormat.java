@@ -7,17 +7,17 @@ import org.colomoto.biolqm.service.MultivaluedSupport;
 import org.kohsuke.MetaInfServices;
 
 /**
- * Format description for ModRev (.lp) files.
+ * Format description for ModRev (.modrev) files.
  * 
  * @author Pedro T. Monteiro
  */
 @MetaInfServices(LogicalModelFormat.class)
 public class ModRevFormat extends AbstractFormat {
 
-	public static final String file_extension = "lp";
+	public static final String ID = "modrev";
 
 	public ModRevFormat() {
-		super(file_extension, "Model Revision format", MultivaluedSupport.BOOLEAN_STRICT);
+		super(ID, "Model Revision format", MultivaluedSupport.BOOLEAN_STRICT);
 	}
 
 	@Override
