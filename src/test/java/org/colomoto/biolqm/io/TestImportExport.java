@@ -142,11 +142,10 @@ public class TestImportExport {
 		}
 	}
 
-
 	@Test
 	public void testModRevExport() {
 		LogicalModel model = getSimpleModel();
-		exportModRev(model, "testExport.lp");
+		exportModRev(model, "testExport.modrev");
 	}
 	public void exportModRev(LogicalModel model, String filename) {
 		ModRevExport exporter = new ModRevExport(model);
